@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reto Digital | Cultura Digital I</title>
 <style>
@@ -105,7 +106,7 @@ function startQuiz(){
 function selectedFor(i){return [...document.querySelectorAll(`[name="q${i}"]:checked`)].map(el=>Number(el.value)).sort((a,b)=>a-b)}
 function sameArray(a,b){return a.length===b.length&&a.every((v,i)=>v===b[i])}
 async function sendToGoogleSheets(record){
- const endpoint=$("endpoint").value.trim();
+ const endpoint=GOOGLE_SCRIPT_URL;
  if(!endpoint) return {sent:false, message:"No se configuró Google Sheets; el resultado quedó guardado localmente."};
  try{
    // Apps Script web apps accept a simple text/plain POST; no-cors prevents reading the response,
@@ -114,7 +115,7 @@ async function sendToGoogleSheets(record){
    return {sent:true,message:"Se envió la solicitud a Google Sheets. El docente debe confirmar que se registró correctamente."};
  }catch(err){return {sent:false,message:"No se pudo enviar el resultado. Se guardó una copia local; informa al docente y descarga el CSV como respaldo."};}
 }
-function submitQuiz(e){
+async function submitQuiz(e){
  e.preventDefault();if($("submitBtn").disabled)return;$("submitBtn").disabled=true;$("submitBtn").textContent="Guardando resultado...";clearInterval(timerId);const seconds=elapsed();let correct=0;const answers=[];
  questions.forEach((q,i)=>{const selected=selectedFor(i);const ok=sameArray(selected,[...q.a].sort((a,b)=>a-b));if(ok)correct++;answers.push({question:q.q,selected:selected.map(n=>q.opts[n]),expected:q.a.map(n=>q.opts[n]),ok,why:q.why})});
  const record={...currentRecord,attempt:attemptNumber,score:correct,total:questions.length,percent:Math.round(correct/questions.length*100),seconds,time:fmtTime(seconds),date:new Date().toLocaleString("es-MX"),answers};
@@ -123,6 +124,7 @@ function submitQuiz(e){
  $("resultIntro").textContent=`${record.name} · Grupo ${record.group}. ${sync.message}`;
  $("scoreMetric").textContent=`${correct}/${questions.length} (${record.percent}%)`;$("timeMetric").textContent=record.time;$("attemptMetric").textContent=record.attempt;
  $("review").innerHTML=answers.map((a,i)=>`<div class="feedback ${a.ok?'correct':'incorrect'}"><strong>${i+1}. ${a.ok?'Correcta':'Por revisar'}</strong><div>${escapeHtml(a.question)}</div><div><b>Tu respuesta:</b> ${a.selected.length?a.selected.map(escapeHtml).join("; "):"Sin responder"}</div>${!a.ok?`<div><b>Respuesta esperada:</b> ${a.expected.map(escapeHtml).join("; ")}</div>`:""}<div class="note">${escapeHtml(a.why)}</div></div>`).join("");
+ $("submitBtn").disabled=false;$("submitBtn").textContent="Calificar y finalizar";
  show("resultPanel");window.scrollTo({top:0,behavior:"smooth"});
 }
 function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"'}
