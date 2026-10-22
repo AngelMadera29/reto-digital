@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reto Digital | Cultura Digital I</title>
+<style>
+:root{--navy:#183153;--blue:#2864dc;--cyan:#dff5f4;--paper:#f4f7fb;--ink:#172334;--muted:#64748b;--line:#dce4ef;--green:#16835b;--red:#b83232}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.5}
+header{background:linear-gradient(125deg,#183153,#2864dc);color:#fff;padding:28px 18px 34px}
+.hero{max-width:900px;margin:auto}.eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:.76rem;font-weight:800;opacity:.85}
+h1{margin:.35rem 0;font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.1}.hero p{max-width:680px;margin:.6rem 0 0;color:#eaf1ff}
+main{max-width:900px;margin:-18px auto 40px;padding:0 14px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(18px,4vw,28px);box-shadow:0 8px 24px #1831530c;margin-bottom:16px}
+h2{margin:0 0 12px;color:var(--navy);font-size:1.35rem}h3{margin:0 0 10px;font-size:1.05rem}
+.fields{display:grid;grid-template-columns:2fr 1fr;gap:14px}.field label{display:block;font-weight:750;margin-bottom:6px}.field input{width:100%;padding:12px 13px;border:1px solid #b9c7d9;border-radius:10px;font:inherit;background:#fff}
+.note{font-size:.9rem;color:var(--muted);margin:12px 0 0}.btn{border:0;border-radius:10px;padding:12px 17px;font:inherit;font-weight:800;cursor:pointer}.primary{background:var(--blue);color:#fff}.secondary{background:#e8eef8;color:var(--navy)}.danger{background:#fff0f0;color:var(--red)}button:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.hidden{display:none!important}
+.topline{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-bottom:16px}.pill{background:#edf3ff;color:var(--navy);padding:7px 11px;border-radius:999px;font-weight:800;font-size:.9rem}
+.progress{height:8px;background:#e9eef5;border-radius:99px;overflow:hidden;margin:10px 0 22px}.progress span{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}
+.question{border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0}.qnum{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);font-weight:850}.question p{font-weight:750;margin:6px 0 13px}
+.option{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin:8px 0;cursor:pointer}.option:hover{background:#f7faff;border-color:#9db9f3}.option input{margin-top:5px;accent-color:var(--blue)}.option span{flex:1}
+.checkrow{display:flex;gap:10px;align-items:flex-start;margin-top:12px}.checkrow input{margin-top:5px}
+.resultgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.metric{background:#f1f6ff;border-radius:12px;padding:14px}.metric small{display:block;color:var(--muted);font-weight:700}.metric strong{font-size:1.45rem;color:var(--navy)}
+.feedback{border-radius:10px;padding:12px;margin:9px 0;background:#f4f7fb}.correct{border-left:4px solid var(--green)}.incorrect{border-left:4px solid var(--red)}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}th{background:#f1f5fb;color:var(--navy)}
+footer{text-align:center;color:var(--muted);font-size:.85rem;padding:10px 16px 28px}
+@media(max-width:580px){.fields{grid-template-columns:1fr}.resultgrid{grid-template-columns:1fr}.metric strong{font-size:1.25rem}}
+</style>
+</head>
+<body>
+<header><div class="hero"><div class="eyebrow">Primer semestre · Bachillerato</div><h1>Reto Digital</h1><p>Cuestionario interactivo de Cultura Digital I. Demuestra lo que sabes sobre componentes de la computadora, correo electrónico, hardware, software, sistemas operativos y navegadores.</p></div></header>
+<main>
+<section class="panel" id="studentPanel">
+<h2>Antes de comenzar</h2>
+<div class="fields">
+ <div class="field"><label for="fullname">Nombre completo</label><input id="fullname" autocomplete="name" placeholder="Escribe nombre(s) y apellidos" maxlength="120" required></div>
+ <div class="field"><label for="group">Grupo</label><input id="group" placeholder="Ej. 1.º A" maxlength="30" required></div>
+</div>
+
+<p class="note">Son 10 preguntas. El cronómetro inicia al comenzar. Lee con atención y revisa tus respuestas antes de enviar.</p>
+<div class="actions"><button class="btn primary" id="startBtn">Comenzar cuestionario</button><button class="btn secondary" id="recordsBtn">Ver registros de este dispositivo</button></div>
+<p class="note">Privacidad: al finalizar, se intentará enviar tu nombre, grupo y resultado a la hoja de cálculo del docente. También se conservará una copia en este navegador.</p>
+</section>
+<section class="panel hidden" id="quizPanel">
+<div class="topline"><span class="pill" id="progressText">Pregunta 1 de 10</span><span class="pill">Tiempo: <span id="timer">00:00</span></span></div>
+<div class="progress"><span id="progressBar"></span></div>
+<form id="quizForm">
+<div id="questions"></div>
+<div class="actions"><button class="btn primary" id="submitBtn" type="submit">Calificar y finalizar</button><button class="btn secondary" type="button" id="backBtn">Volver a mis datos</button></div>
+</form>
+</section>
+<section class="panel hidden" id="resultPanel" aria-live="polite">
+<h2 id="resultHeading">Resultado</h2><p id="resultIntro"></p>
+<div class="resultgrid">
+ <div class="metric"><small>Calificación</small><strong id="scoreMetric">0/10</strong></div>
+ <div class="metric"><small>Tiempo empleado</small><strong id="timeMetric">00:00</strong></div>
+ <div class="metric"><small>Intento de este alumno</small><strong id="attemptMetric">1</strong></div>
+</div>
+<h3>Revisión de respuestas</h3><div id="review"></div>
+<div class="actions"><button class="btn primary" id="retryBtn">Intentar de nuevo</button><button class="btn secondary" id="exportOneBtn">Descargar mi resultado (CSV)</button><button class="btn secondary" id="allRecordsBtn">Ver registros</button><button class="btn secondary" id="homeBtn">Inicio</button></div>
+</section>
+<section class="panel hidden" id="recordsPanel">
+<h2>Registros guardados en este dispositivo</h2><p class="note">Incluye nombre, grupo, calificación, tiempo e intento. Los registros permanecen en el navegador donde se realizó el cuestionario.</p>
+<div class="actions" style="margin:0 0 14px"><button class="btn primary" id="exportAllBtn">Descargar todos los registros (CSV)</button><button class="btn danger" id="clearBtn">Borrar registros de este dispositivo</button><button class="btn secondary" id="closeRecordsBtn">Cerrar</button></div>
+<div class="tablewrap" id="recordsTable"></div>
+</section>
+</main>
+<footer>Cultura Digital I · Material de repaso académico</footer>
+<script>
+const questions = [
+ {topic:"Componentes",q:"¿Cuál dispositivo se utiliza principalmente para introducir texto y comandos en la computadora?",opts:["Monitor","Teclado","Bocinas","Proyector"],a:[1],why:"El teclado es un dispositivo de entrada: permite introducir texto, números y comandos."},
+ {topic:"Componentes",q:"¿Qué componente ejecuta instrucciones y realiza gran parte de los cálculos de la computadora?",opts:["Unidad central de procesamiento (CPU)","Unidad de estado sólido (SSD)","Monitor","Teclado"],a:[0],why:"La CPU interpreta y ejecuta instrucciones. La SSD almacena información y el monitor muestra resultados."},
+ {topic:"Hardware y software",q:"¿Cuál opción explica correctamente la diferencia entre hardware y software?",opts:["Hardware son aplicaciones y software son cables.","Hardware solo guarda archivos y software solo sirve para navegar.","Hardware son componentes físicos y software son programas e instrucciones.","Hardware y software significan lo mismo."],a:[2],why:"El hardware son las partes físicas; el software comprende programas e instrucciones."},
+ {topic:"Sistema operativo",q:"¿Cuál conjunto contiene únicamente sistemas operativos?",opts:["Google Chrome, Mozilla Firefox y Microsoft Edge","Microsoft Word, Excel y PowerPoint","Google, Bing y Yahoo","Windows, Linux y macOS"],a:[3],why:"Windows, Linux y macOS son sistemas operativos; los demás ejemplos son navegadores, aplicaciones o buscadores."},
+ {topic:"Navegadores",q:"¿Qué programa utilizarías para abrir y consultar una página web?",opts:["Calculadora","Navegador web","Explorador de archivos","Editor de imágenes"],a:[1],why:"Un navegador web permite acceder a páginas web e interactuar con sitios de Internet."},
+ {topic:"Correo electrónico",q:"Vas a enviar a tu docente un trabajo en PDF por correo. ¿Qué debes hacer para enviarlo correctamente? Selecciona todas las acciones correctas.",opts:["Escribir la dirección de correo del destinatario.","Redactar un asunto y un mensaje claros.","Adjuntar el PDF y comprobar que aparezca antes de enviar.","Cerrar la aplicación sin adjuntar el archivo porque el asunto lo envía automáticamente."],a:[0,1,2],multi:true,why:"Se necesita identificar al destinatario, redactar el mensaje y adjuntar/verificar el documento. El asunto no adjunta archivos."},
+ {topic:"Correo electrónico",q:"¿Para qué sirve el campo «Asunto» de un correo electrónico?",opts:["Para describir brevemente el motivo del correo.","Para escribir la contraseña del destinatario.","Para adjuntar automáticamente todos los archivos.","Para reemplazar la dirección del destinatario."],a:[0],why:"El asunto resume el propósito del mensaje y ayuda al destinatario a identificarlo."},
+ {topic:"Memoria",q:"La memoria RAM almacena temporalmente datos e instrucciones que se están utilizando y normalmente pierde su contenido al apagar el equipo.",opts:["Verdadero","Falso"],a:[0],tf:true,why:"La RAM es una memoria volátil que conserva información temporal mientras el equipo está encendido."},
+ {topic:"Navegadores y sistemas operativos",q:"Google Chrome es un sistema operativo porque permite abrir páginas de Internet.",opts:["Verdadero","Falso"],a:[1],tf:true,why:"Chrome es un navegador web. Un sistema operativo, como Windows o Android, administra los recursos del dispositivo."},
+ {topic:"Seguridad digital",q:"Recibes un correo inesperado que solicita tu contraseña y contiene un archivo adjunto sospechoso. ¿Qué acción es más segura?",opts:["Abrir el archivo para averiguar quién lo envió.","Responder con tu contraseña para confirmar tu identidad.","Reenviarlo a todos tus compañeros para pedir opinión.","No abrir el archivo ni compartir datos; verificar al remitente por un medio confiable."],a:[3],why:"Evitar archivos sospechosos y verificar la solicitud por un canal independiente reduce riesgos de fraude y malware."}
+];
+const $=id=>document.getElementById(id);
+const STORAGE="retoDigitalCulturaDigitalI_records_v1";
+let startedAt=0, timerId=null, currentRecord=null, attemptNumber=1;
+function getRecords(){try{return JSON.parse(localStorage.getItem(STORAGE)||"[]")}catch(e){return []}}
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZDtDKIdPjh_oyV7Rrw56iZID5xKBDLkW-QiwLh0V_4Xe2Ht-t3Nkz5iihNY49pvftjQ/exec";
+function saveRecords(rows){localStorage.setItem(STORAGE,JSON.stringify(rows))}
+function fmtTime(sec){sec=Math.max(0,Math.floor(sec));return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0")}
+function elapsed(){return Math.floor((Date.now()-startedAt)/1000)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function show(panel){["studentPanel","quizPanel","resultPanel","recordsPanel"].forEach(id=>$(id).classList.toggle("hidden",id!==panel))}
+function renderQuestions(){
+ $("questions").innerHTML=questions.map((q,i)=>`<section class="question"><div class="qnum">${i+1}. ${q.topic}${q.multi?' · Varias respuestas':q.tf?' · Verdadero o falso':''}</div><p>${q.q}</p>${q.opts.map((o,j)=>`<label class="option"><input type="${q.multi?'checkbox':q.tf?'radio':'radio'}" name="q${i}" value="${j}"><span>${escapeHtml(o)}</span></label>`).join("")}</section>`).join("");
+ $("progressText").textContent=`${questions.length} preguntas`;
+}
+function updateTimer(){$("timer").textContent=fmtTime(elapsed())}
+function startQuiz(){
+ const name=$("fullname").value.trim(), group=$("group").value.trim();
+ if(!name||!group){alert("Escribe tu nombre completo y grupo para comenzar.");(!name?$("fullname"):$("group")).focus();return}
+ const key=name.toLocaleLowerCase("es-MX")+"|"+group.toLocaleLowerCase("es-MX");
+ attemptNumber=getRecords().filter(r=>r.key===key).length+1;
+ startedAt=Date.now();currentRecord={name,group,key};renderQuestions();show("quizPanel");
+ clearInterval(timerId);updateTimer();timerId=setInterval(updateTimer,1000);window.scrollTo({top:0,behavior:"smooth"});
+}
+function selectedFor(i){return [...document.querySelectorAll(`[name="q${i}"]:checked`)].map(el=>Number(el.value)).sort((a,b)=>a-b)}
+function sameArray(a,b){return a.length===b.length&&a.every((v,i)=>v===b[i])}
+async function sendToGoogleSheets(record){
+ const endpoint=$("endpoint").value.trim();
+ if(!endpoint) return {sent:false, message:"No se configuró Google Sheets; el resultado quedó guardado localmente."};
+ try{
+   // Apps Script web apps accept a simple text/plain POST; no-cors prevents reading the response,
+   // but allows the browser to submit the record to the deployed endpoint.
+   await fetch(endpoint,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(record)});
+   return {sent:true,message:"Se envió la solicitud a Google Sheets. El docente debe confirmar que se registró correctamente."};
+ }catch(err){return {sent:false,message:"No se pudo enviar el resultado. Se guardó una copia local; informa al docente y descarga el CSV como respaldo."};}
+}
+function submitQuiz(e){
+ e.preventDefault();if($("submitBtn").disabled)return;$("submitBtn").disabled=true;$("submitBtn").textContent="Guardando resultado...";clearInterval(timerId);const seconds=elapsed();let correct=0;const answers=[];
+ questions.forEach((q,i)=>{const selected=selectedFor(i);const ok=sameArray(selected,[...q.a].sort((a,b)=>a-b));if(ok)correct++;answers.push({question:q.q,selected:selected.map(n=>q.opts[n]),expected:q.a.map(n=>q.opts[n]),ok,why:q.why})});
+ const record={...currentRecord,attempt:attemptNumber,score:correct,total:questions.length,percent:Math.round(correct/questions.length*100),seconds,time:fmtTime(seconds),date:new Date().toLocaleString("es-MX"),answers};
+ const rows=getRecords();rows.push(record);saveRecords(rows);currentRecord=record; const sync=await sendToGoogleSheets(record);
+ $("resultHeading").textContent=`¡${record.percent>=70?"Buen trabajo":"Sigue practicando"}!`;
+ $("resultIntro").textContent=`${record.name} · Grupo ${record.group}. ${sync.message}`;
+ $("scoreMetric").textContent=`${correct}/${questions.length} (${record.percent}%)`;$("timeMetric").textContent=record.time;$("attemptMetric").textContent=record.attempt;
+ $("review").innerHTML=answers.map((a,i)=>`<div class="feedback ${a.ok?'correct':'incorrect'}"><strong>${i+1}. ${a.ok?'Correcta':'Por revisar'}</strong><div>${escapeHtml(a.question)}</div><div><b>Tu respuesta:</b> ${a.selected.length?a.selected.map(escapeHtml).join("; "):"Sin responder"}</div>${!a.ok?`<div><b>Respuesta esperada:</b> ${a.expected.map(escapeHtml).join("; ")}</div>`:""}<div class="note">${escapeHtml(a.why)}</div></div>`).join("");
+ show("resultPanel");window.scrollTo({top:0,behavior:"smooth"});
+}
+function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"'}
+function downloadCSV(rows,filename){
+ if(!rows.length){alert("Todavía no hay registros para descargar.");return}
+ const header=["Nombre completo","Grupo","Intento","Calificación","Porcentaje","Tiempo (mm:ss)","Fecha y hora"];
+ const lines=[header,...rows.map(r=>[r.name,r.group,r.attempt,`${r.score}/${r.total}`,r.percent+"%",r.time,r.date])].map(row=>row.map(csvCell).join(","));
+ const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+}
+function renderRecords(){
+ const rows=getRecords();
+ if(!rows.length){$("recordsTable").innerHTML="<p>Aún no hay cuestionarios finalizados en este dispositivo.</p>";return}
+ $("recordsTable").innerHTML=`<table><thead><tr><th>Nombre</th><th>Grupo</th><th>Intento</th><th>Calificación</th><th>Tiempo</th><th>Fecha</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.group)}</td><td>${r.attempt}</td><td>${r.score}/${r.total} (${r.percent}%)</td><td>${r.time}</td><td>${escapeHtml(r.date)}</td></tr>`).join("")}</tbody></table>`;
+}
+$("startBtn").addEventListener("click",startQuiz);$("quizForm").addEventListener("submit",submitQuiz);
+$("backBtn").addEventListener("click",()=>{if(confirm("¿Salir del cuestionario? El intento no se guardará.")){clearInterval(timerId);show("studentPanel")}});
+$("recordsBtn").addEventListener("click",()=>{renderRecords();show("recordsPanel")});
+$("allRecordsBtn").addEventListener("click",()=>{renderRecords();show("recordsPanel")});
+$("closeRecordsBtn").addEventListener("click",()=>show(currentRecord&&currentRecord.answers?"resultPanel":"studentPanel"));
+$("retryBtn").addEventListener("click",()=>{ $("fullname").value=currentRecord.name;$("group").value=currentRecord.group;show("studentPanel");window.scrollTo({top:0,behavior:"smooth"})});
+$("exportOneBtn").addEventListener("click",()=>downloadCSV([currentRecord],"resultado_cultura_digital.csv"));
+$("exportAllBtn").addEventListener("click",()=>downloadCSV(getRecords(),"registros_cultura_digital.csv"));
+$("clearBtn").addEventListener("click",()=>{if(confirm("¿Borrar permanentemente todos los registros guardados en este navegador? Descarga primero el CSV si necesitas conservarlos.")){localStorage.removeItem(STORAGE);renderRecords();}});
+$("homeBtn").addEventListener("click",()=>{show("studentPanel");window.scrollTo({top:0,behavior:"smooth"})});
+</script>
+</body>
+</html>
