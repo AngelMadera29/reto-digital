@@ -57,7 +57,7 @@ footer{text-align:center;color:var(--muted);font-size:.85rem;padding:10px 16px 2
  <div class="metric"><small>Tiempo empleado</small><strong id="timeMetric">00:00</strong></div>
  <div class="metric"><small>Intento de este alumno</small><strong id="attemptMetric">1</strong></div>
 </div>
-<h3>Revisión de respuestas</h3><div id="review"></div>
+
 <div class="actions"><button class="btn primary" id="retryBtn">Intentar de nuevo</button><button class="btn secondary" id="exportOneBtn">Descargar mi resultado (CSV)</button><button class="btn secondary" id="allRecordsBtn">Ver registros</button><button class="btn secondary" id="homeBtn">Inicio</button></div>
 </section>
 <section class="panel hidden" id="recordsPanel">
@@ -112,18 +112,19 @@ function checkStudent(name, group, receipt = "") {
 }
 async function startQuiz(){
  const name=$("fullname").value.trim(), group=$("group").value.trim();
- if(!name||!group){alert("Escribe tu nombre completo y grupo para comenzar.");(!name?$("fullname"):$("group")).focus();return}
+ if(!name||!group){alert("Escribe tu nombre completo y grupo para comenzar.");(!name?$("fullname"):$("group")).focus();return;}
  const key=name.toLocaleLowerCase("es-MX")+"|"+group.toLocaleLowerCase("es-MX");
- const btn=$("startBtn");btn.disabled=true;btn.textContent="Verificando registro...";
+ const btn=$("startBtn");btn.disabled=true;btn.textContent="Consultando intentos...";
  try {
-  const status=await checkStudent(name,group);
-  if(status.exists){alert("Este alumno ya entregó el cuestionario. No se permite otro intento.");return;}
- }catch(err){alert("No fue posible verificar el registro en Google Sheets. Intenta nuevamente. " + err.message);return;}
- finally{btn.disabled=false;btn.textContent="Comenzar cuestionario";}
- attemptNumber=1;
+   const status=await checkStudent(name,group);
+   attemptNumber=Number(status.attempts||0)+1;
+ }catch(err){
+   alert("No fue posible consultar los intentos en Google Sheets. Intenta nuevamente. " + err.message);return;
+ }finally{btn.disabled=false;btn.textContent="Comenzar cuestionario";}
  startedAt=Date.now();currentRecord={name,group,key};renderQuestions();show("quizPanel");
  clearInterval(timerId);updateTimer();timerId=setInterval(updateTimer,1000);window.scrollTo({top:0,behavior:"smooth"});
 }
+
 function selectedFor(i){return [...document.querySelectorAll(`[name="q${i}"]:checked`)].map(el=>Number(el.value)).sort((a,b)=>a-b)}
 function sameArray(a,b){return a.length===b.length&&a.every((v,i)=>v===b[i])}
 async function sendToGoogleSheets(record){
@@ -137,36 +138,52 @@ async function sendToGoogleSheets(record){
  }catch(err){return {sent:false,message:"No se pudo enviar el resultado. Se guardó una copia local; informa al docente y descarga el CSV como respaldo."};}
 }
 async function submitQuiz(e){
- e.preventDefault();if($("submitBtn").disabled)return;$("submitBtn").disabled=true;$("submitBtn").textContent="Guardando resultado...";clearInterval(timerId);const seconds=elapsed();let correct=0;const answers=[];
- questions.forEach((q,i)=>{const selected=selectedFor(i);const ok=sameArray(selected,[...q.a].sort((a,b)=>a-b));if(ok)correct++;answers.push({question:q.q,selected:selected.map(n=>q.opts[n]),expected:q.a.map(n=>q.opts[n]),ok,why:q.why})});
- const record={...currentRecord,attempt:attemptNumber,score:correct,total:questions.length,percent:Math.round(correct/questions.length*100),seconds,time:fmtTime(seconds),date:new Date().toLocaleString("es-MX"),answers};
- record.receipt=(crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+"-"+Math.random());
+ e.preventDefault();if($("submitBtn").disabled)return;
+ $("submitBtn").disabled=true;$("submitBtn").textContent="Guardando resultado...";
+ clearInterval(timerId);const seconds=elapsed();let correct=0;const answers=[];
+ questions.forEach((q,i)=>{
+   const selected=selectedFor(i),ok=sameArray(selected,[...q.a].sort((a,b)=>a-b));
+   if(ok)correct++;
+   // Las respuestas se guardan para el docente, pero nunca se muestran al alumno al finalizar.
+   answers.push({question:q.q,selected:selected.map(n=>q.opts[n]),expected:q.a.map(n=>q.opts[n]),ok,why:q.why});
+ });
+ const record={...currentRecord,attempt:attemptNumber,score:correct,total:questions.length,
+   percent:Math.round(correct/questions.length*100),seconds,time:fmtTime(seconds),
+   date:new Date().toLocaleString("es-MX"),answers};
+ record.receipt=(globalThis.crypto?.randomUUID?.() || String(Date.now())+"-"+Math.random());
  const rows=getRecords();rows.push(record);saveRecords(rows);currentRecord=record;
- let sync;
+ let syncMessage="";
  try {
-  const precheck=await checkStudent(record.name,record.group);
-  if(precheck.exists){sync={message:"Ya existía una entrega para este alumno. Este intento NO fue registrado."};}
-  else {
-   await sendToGoogleSheets(record);
-   let confirmed=false, conflict=false;
-   for(let i=0;i<5;i++){
-    await new Promise(resolve=>setTimeout(resolve,1500));
-    try{const state=await checkStudent(record.name,record.group,record.receipt);
-     if(state.receiptFound){confirmed=true;break;}
-     if(state.exists){conflict=true;break;}
-    }catch(err){}
+   const sent=await sendToGoogleSheets(record);
+   if(!sent.sent)throw new Error(sent.message);
+   let confirmed=false;
+   for(let i=0;i<6;i++){
+     await new Promise(resolve=>setTimeout(resolve,1200));
+     try{
+       const state=await checkStudent(record.name,record.group,record.receipt);
+       if(state.receiptFound){
+         confirmed=true;
+         if(Number(state.receiptAttempt)>0){
+           record.attempt=Number(state.receiptAttempt);
+           const saved=getRecords();const found=saved.findIndex(r=>r.receipt===record.receipt);
+           if(found>=0){saved[found].attempt=record.attempt;saveRecords(saved);}
+         }
+         break;
+       }
+     }catch(err){}
    }
-   sync={message:confirmed?"Resultado confirmado y guardado en Google Sheets.":conflict?"Ya existe otro registro para este alumno; esta entrega no se agregó.":"No se pudo confirmar el guardado. Avisa al docente y conserva el CSV como respaldo."};
-  }
- }catch(err){sync={message:"No se pudo verificar o enviar el resultado. Contacta al docente. " + err.message};}
- $("retryBtn").classList.add("hidden");
+   syncMessage=confirmed?"Resultado guardado en Google Sheets.":"No se pudo confirmar el guardado. Conserva tu CSV y avisa al docente.";
+ }catch(err){syncMessage="No se pudo confirmar el envío a Google Sheets. Conserva tu CSV y avisa al docente. " + err.message;}
+ $("retryBtn").classList.remove("hidden");
  $("resultHeading").textContent=`¡${record.percent>=70?"Buen trabajo":"Sigue practicando"}!`;
- $("resultIntro").textContent=`${record.name} · Grupo ${record.group}. ${sync.message}`;
- $("scoreMetric").textContent=`${correct}/${questions.length} (${record.percent}%)`;$("timeMetric").textContent=record.time;$("attemptMetric").textContent=record.attempt;
- $("review").innerHTML=answers.map((a,i)=>`<div class="feedback ${a.ok?'correct':'incorrect'}"><strong>${i+1}. ${a.ok?'Correcta':'Por revisar'}</strong><div>${escapeHtml(a.question)}</div><div><b>Tu respuesta:</b> ${a.selected.length?a.selected.map(escapeHtml).join("; "):"Sin responder"}</div>${!a.ok?`<div><b>Respuesta esperada:</b> ${a.expected.map(escapeHtml).join("; ")}</div>`:""}<div class="note">${escapeHtml(a.why)}</div></div>`).join("");
+ $("resultIntro").textContent=`${record.name} · Grupo ${record.group}. ${syncMessage}`;
+ $("scoreMetric").textContent=`${correct}/${questions.length} (${record.percent}%)`;
+ $("timeMetric").textContent=record.time;
+ $("attemptMetric").textContent=record.attempt;
  $("submitBtn").disabled=false;$("submitBtn").textContent="Calificar y finalizar";
  show("resultPanel");window.scrollTo({top:0,behavior:"smooth"});
 }
+
 function csvCell(v){return '"'+String(v??"").replace(/"/g,'""')+'"'}
 function downloadCSV(rows,filename){
  if(!rows.length){alert("Todavía no hay registros para descargar.");return}
@@ -185,7 +202,7 @@ $("backBtn").addEventListener("click",()=>{if(confirm("¿Salir del cuestionario?
 $("recordsBtn").addEventListener("click",()=>{renderRecords();show("recordsPanel")});
 $("allRecordsBtn").addEventListener("click",()=>{renderRecords();show("recordsPanel")});
 $("closeRecordsBtn").addEventListener("click",()=>show(currentRecord&&currentRecord.answers?"resultPanel":"studentPanel"));
-$("retryBtn").addEventListener("click",()=>{ $("fullname").value=currentRecord.name;$("group").value=currentRecord.group;show("studentPanel");window.scrollTo({top:0,behavior:"smooth"})});
+$("retryBtn").addEventListener("click",()=>{ $("fullname").value=currentRecord.name;$("group").value=currentRecord.group;startQuiz();});
 $("exportOneBtn").addEventListener("click",()=>downloadCSV([currentRecord],"resultado_cultura_digital.csv"));
 $("exportAllBtn").addEventListener("click",()=>downloadCSV(getRecords(),"registros_cultura_digital.csv"));
 $("clearBtn").addEventListener("click",()=>{if(confirm("¿Borrar permanentemente todos los registros guardados en este navegador? Descarga primero el CSV si necesitas conservarlos.")){localStorage.removeItem(STORAGE);renderRecords();}});
